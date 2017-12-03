@@ -1,0 +1,10 @@
+dhcpbe
+setenv serverip 192.168.0.101
+
+tftpboot 0x80F80000 am335x-boneblack.dtb
+
+tftpboot 0x80007FC0 zImage
+
+setenv bootargs console=ttyO0,115200n8 root=/dev/mmcblk1p1 ro rootfstype=ext4 rootwait
+
+bootz 0x80007FC0 - 0x80F80000
