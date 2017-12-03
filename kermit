@@ -1,0 +1,51 @@
+# C-kermit install and usage
+
+C-kermit是一款集成了网络通信、串口通信的工具，它有如下多种功能
+1. 支持kermit文件传输协议
+2. 自定义了一种脚本语言，它强大而易于使用，可用于自动化工作
+3. 无论是网络通信，还是串口通信，操作是一致的，并支持多种硬件、软件平台
+4. 有安全认证、加密功能
+5. 内建FTP、HTTP客户端功能及ssh接口
+6. 支持字符集转换
+
+### 安装
+    # apt-get install ckermit
+
+### 配置
+    # vi /etc/kermit/kermrc或者 vi root/.kermitrc
+下面是使用U-Boot和Linux时推荐配置:
+```
+    set line          /dev/ttyUSB0
+    set speed         115200
+    set carrier-watch off
+    set handshake     none
+    set flow-control none
+    robust
+    set file type     bin
+    set file name     lit
+    set rec pack      1000
+    set send pack     1000
+    set window        5
+```
+将上面的设置添加到“/etc/kermit/kermrc”中
+
+/dev/ttyUSB0表示使用usb转串口的连接线接开发板，如果是只用串口线连接主机的话，需要设置为/dev/ttyS0
+
+### 启动
+    启动kermit，连接串口:
+    # kermit
+    C-Kermit>connect
+    # 现在就已经成功连接到串口了。
+### 切换
+
+    按下 Ctrl + \, 再按c可以跳回kermit
+    C-Kermit>
+    此时输入c,即connect即可连接到串口
+
+发送文件
+--------------------------------------
+    kermit中输入connect后,转入了u-boot串口界面。
+    输入loadb 0x00300000,启动开发板上的kermit协议。
+    按下 Ctrl + \, 再按c, 切换到kermit。
+    C-Kermit> send /home/share/uImage.pkg
+    kermit开始传送，并且显示一个传送界面，并动态显示传送进度。   传送完毕后，输入c，即connect命令，回到u-boot的串口界面。使用u-boot命令，启动内核。等下载完毕后再关闭这个终端窗口，重新开一个终端，然后kermit -c这时候在用cp.b dest src len拷贝程序到flash中。

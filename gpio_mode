@@ -1,0 +1,38 @@
+## GPIO Pin Configuration Settings
+
+As well as configuring pins to have either a pull‐up or a pull‐down resistor
+configuration, there are also seven different modes for each pin. This is called
+the multiplexer mode (mmode) for the pin and it is set using a three‐digit
+binary number, as described in the first row of Table 6-1. This table is 
+based on information provided in the AM335x TRM (GPIOs conf_<module>_<pin> ‐ Table 9‐60
+of the TRM). Using these bit settings, you can construct a seven‐bit value that
+can be used to configure the exact behavior of a GPIO pin within Linux using
+device tree overlays, which is discussed shortly.
+
+Table 6-1: GPIO Pin User‐Configuration Settings
+
+| BIT | AM335x FIELD | DESCRIPTION |
+|-----| --------------| ------------ |
+| 0,1,2 | mmode | The multiplexer mode: Using the three least‐significant bits. you can select a mode between 0 and 7, e.g., 000=0, 111=7. This enables each pin to have up to eight different modes.|
+|  3 | puden | Enable internal pull‐up/pull‐down resistor: Enable=0, Disable=1.|
+| 4  | putypesel | Select internal pull‐up or pull‐down form: Pull‐down=0, Pull‐up=1.|
+| 5 | rxactive | Input Active: Receiver disabled=0, Input enabled=1. If this bits set high, the pin will be an input; otherwise, it will be an output. |
+| 6 | slewctrl | Slew Control: Fast=0, Slow=1. Slew rate provides control over the rise/fall time of an output. You would only set this value to slow if you were using long interconnects, such as on I2C buses. |
+
+NOTE: There is a video on the use of these settings on the web page associated with
+this chapter at www.exploringbeaglebone.com/chapter6/ and at tiny.cc/
+ebb601 that you can refer to while reading this chapter.
+
+
+The mmode is discussed shortly, but when working with GPIOs the mmode
+will be 7, and therefore the most common hexadecimal values that are used to
+configure a GPIO’s settings are as follows (bit 6 is the most significant bit (MSB)
+and is on the LHS):
+
+- 0x27 (0100111) Fast, Input, Pull‐Down, Enabled and Mux Mode 7
+- 0x37 (0110111) Fast, Input, Pull‐Up, Enabled, Mux Mode 7
+- 0x07 (0000111) Fast, Output, Pull‐down, Enabled, Mux Mode 7
+- 0x17 (0010111) Fast, Output, Pull‐up, Enabled, Mux Mode 7
+
+These configuration values are very useful, as they enable you to set the
+pins into the exact operational mode that you require.

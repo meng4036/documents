@@ -1,0 +1,4 @@
+PWM
+
+
+cd /sys/class/pwm/pwmchip0/pwm1pwm

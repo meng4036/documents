@@ -1,0 +1,196 @@
+
+## Linux Device Tree
+The first introduction to the Linux boot process is in Chapter 3, where it is made
+clear that Linux running on an embedded device, such as the BBB, does not have
+a BIOS. Rather, in order to boot and configure the device, it uses files on the SD
+card or eMMC that describe the machine’s hardware. Every type of embedded
+Linux device has its own unique set of files to describe its platform hardware.
+
+When the BeagleBone was running older Linux kernels, the specific modifications
+required to those Linux kernels were applied to the Linux source
+code directly by using a file called board‐am335xevm.c. Older Linux kernels
+(before 3.7) also provided an easy-to-use OMAP MUX to handle configuration
+of the BeagleBone’s pins. The popularity of ARM‐based microprocessers led to
+a proliferation of Linux kernel customizations. As a result, Linus Torvalds was
+unhappy with the amount of code that was being added directly to mainline
+Linux to describe each and every feature, for each and every ARM device being
+manufactured (the board‐am335xevm.c has over 4,000 lines of code). Therefore,
+new ARM boards using the latest Linux kernels use fl attened device tree (FDT)
+models instead, a technology which has been used by PowerPC developers for
+many years (Kridner, 2013).
+
+### The Flattened Device Tree (FDT)
+The FDT is simply a data structure that describes the hardware on the board. In
+the GitHub repository directory that follows, the device tree for the BBB Linux
+3.8.13 kernel is made available so that you can review it:
+```
+∼/exploringbb/chp06/deviceTree/DTSource3.8.13$ ls
+am335x-bone-common.dtsi am335x-boneblack.dts skeleton.dtsi
+am335x-bone.dts am33xx.dtsi tps65217.dtsi
+```
+
+### Device Tree Overlays (DTOs)
+Unfortunately, the FDT is not suitable for the runtime configuration (i.e., after
+Linux has booted) of inputs and outputs, which in the absence of an alternative
+would make dynamically adding capes or adding virtual overlays to the BBB
+extremely problematic. Fortunately, Pantelis Antoniou (Antoniou Consulting)
+developed a solution for this problem using device tree overlays (DTOs) and a
+cape manager (as described at www.elinux.org/Capemgr). The best way to explain
+DTOs is to write one and deploy it to your BBB. For more information on the
+Linux device tree, see the guide at www.elinux.org/Device_Tree and Jason
+Kridner’s guide at tiny.cc/ebb605.
+
+#### Writing an Overlay
+
+If you examine Figure 6-7, which describes the P9 header, you will see that
+P9_11 and P9_13 are allocated to the receiver and transmitter pins of UART4,
+respectively. For this example, it is assumed that you have decided to reallocate
+these pins to GPIO0_30 and GPIO0_31, which are Mode7 in both cases. A DTO
+is written as shown in Listing 6‐3.
+
+```
+/* OUTPUT
+ GPIO(mode7) 0x07 pulldown, 0x17 pullup, 0x?f no pullup/down */
+/* INPUT
+ GPIO(mode7) 0x27 pulldown, 0x37 pullup, 0x?f no pullup/down */
+/dts-v1/;
+/plugin/;
+/{
+    compatible = "ti,beaglebone", "ti,beaglebone-black";
+    part-number = "EBB-GPIO-Example";
+    version = "00A0";
+    fragment@0 {
+        target = <&am33xx_pinmux>;
+        __overlay__ {
+            ebb_example: EBB_GPIO_Example {
+                pinctrl-single,pins = <
+                    0x070 0x07 // P9_11 $28 GPIO0_30=30 Output Mode7 pulldown
+                    0x074 0x37 // P9_13 $29 GPIO0_31=31 Input Mode7 pullup
+                >;
+            };
+        };
+    };
+    fragment@1 {
+        target = <&ocp>;
+        __overlay__ {
+            gpio_helper {
+                compatible = "gpio-of-helper";
+                status = "okay";
+                pinctrl-names = "default";
+                pinctrl-0 = <&ebb_example>;
+            };
+        };
+    };
+};
+
+```
+
+#### Compiling and Deploying an Overlay
+On the BBB, compile the device tree source ( .dts) file into a device tree blob
+object ( .dtbo) using the device tree compiler ( dtc) with the following syntax
+(use 00A0 as the revision number):
+```
+$ dtc ‐O dtb ‐o EBB‐GPIO‐Example‐00A0.dtbo ‐b 0 ‐@ EBB‐GPIO‐Example.dts
+```
+There is a build script ( build) in the overlay directory that contains this
+command syntax. To deploy the overlay, copy the output binary ( .dtbo) file to the
+/lib/firmware directory on the BBB:
+```
+$ sudo cp EBB‐GPIO‐Example‐00A0.dtbo /lib/firmware
+```
+### The BBB Cape Manager
+As discussed in Chapter 1, capes are expansion boards that can be plugged into
+the BBB. Each cape has an associated .dtbo file. Ideally, when you plug a cape
+into the BBB, the appropriate .dtbo file should be loaded in order to configure
+the P8/P9 header pins that interface to the cape. The cape manager is designed
+to allow capes to be loaded dynamically at run time, without the requirement
+to recompile the Linux kernel. The cape manager is implemented entirely in
+the Linux kernel, but it loads .dtbo files from the /lib/firmware directory at
+run time.
+
+#### Loading a Device Tree Overlay
+The first step that you should perform in order to use the cape manager is to
+set up two environment variables (please check that the paths are valid on your
+BBB, as they are subject to change):
+```
+∼$ export SLOTS=/sys/devices/bone_capemgr.9/slots
+∼$ export PINS=/sys/kernel/debug/pinctrl/44e10800.pinmux/pins
+```
+Because you are likely to do this very often, you should add these two lines
+to your .profile file, in the home directory on the BBB. Using the call nano
+~/.profile, add the following lines at the end of the file:
+```
+exportexportSLOTS=/sys/devices/bone_capemgr.9/slots
+PINS=/sys/kernel/debug/pinctrl/44e10800.pinmux/pins
+```
+Then use the source command to set these environment variables. They
+will be automatically set when you boot.
+
+#### Removing an Overlay
+You can remove an overlay from a slot by passing the minus sign, followed by
+the slot number, to the cape manager, as follows:
+```
+root@beaglebone:/lib/firmware# echo ‐6 > $SLOTS
+root@beaglebone:/lib/firmware# cat $SLOTS
+0: 54:PF---
+1: 55:PF---
+2: 56:PF---
+3: 57:PF---
+4: ff:P-O-L Bone-LT-eMMC-2G,00A0,Texas Instrument,BB-BONE-EMMC-2G
+5: ff:P-O-L Bone-Black-HDMI,00A0,Texas Instrument,BB-BONELT-HDMI
+```
+This procedure works for most slots, but at the time of writing, this can lock
+up the Linux terminal for certain capes, requiring a reboot of the BBB. The HDMI
+and eMMC overlays occupy many of the P8/P9 header pins and the overlays
+must be removed in order to access the alternative pins. Disabling the HDMI
+cape or eMMC is not so straightforward, as you must modify the uEnv.txt file,
+using Notepad++ (the ordinary Notepad will not work correctly) or a similar
+application, or directly on the BBB as follows:
+```
+molloyd@beaglebone:/media$ sudo mkdir /mnt/vfat
+molloyd@beaglebone:/media$ sudo mount /dev/mmcblk0p1 /mnt/vfat
+molloyd@beaglebone:/media$ cd /mnt/vfat/
+molloyd@beaglebone:/mnt/vfat$ sudo nano uEnv.txt
+
+```
+Uncomment the following line, but be careful not to uncomment the similar
+HDMI/eMMC line, or your BBB will not boot from the eMMC:
+```
+##Disable HDMI
+optargs=capemgr.disable_partno=BB-BONELT-HDMI,BB-BONELT-HDMIN
+```
+Unmount the file system and reboot:
+```
+molloyd@beaglebone:/mnt/vfat$ cd ..
+molloyd@beaglebone:/mnt$ sudo umount /mnt/vfat
+molloyd@beaglebone:/mnt$ sudo reboot
+molloyd@beaglebone:∼$ cat $SLOTS
+...
+4: ff:P-O-L Bone-LT-eMMC-2G,00A0,Texas Instrument,BB-BONE-EMMC-2G
+5: ff:P‐O--- Bone‐Black‐HDMI,00A0,Texas Instrument,BB‐BONELT‐HDMI
+6: ff:P‐O--- Bone‐Black‐HDMIN,00A0,Texas Instrument,BB‐BONELT‐HDMIN
+```
+The letter “L” means that the cape is enabled, so if it is absent then the cape
+is disabled. If you need to disable the eMMC in order to use the header pins
+that it occupies, be aware that the BBB must be booted from an SD card. If you
+introduce an error into your uEnv.txt file, then the BBB may not boot. See the
+note near the middle of Chapter 3 on how to fix such a problem.
+
+#### Loading an Overlay on Boot
+If you wish to load an overlay every time the board boots, modify the uEnv.txt
+file as just discussed, and add a new optargs line:
+```
+##Disable HDMI
+#optargs=capemgr.disable_partno=BB-BONELT-HDMI,BB-BONELT-HDMIN
+optargs=capemgr.enable_partno=BB‐SPIDEV0
+```
+After reboot you will see that there is a new virtual cape in the next free slot:
+```
+molloyd@beaglebone:∼$ cat $SLOTS
+..
+4: ff:P-O-L Bone-LT-eMMC-2G,00A0,Texas Instrument,BB-BONE-EMMC-2G
+5: ff:P-O-L Bone-Black-HDMI,00A0,Texas Instrument,BB-BONELT-HDMI
+7: ff:P‐O‐L Override Board Name,00A0,Override Manuf,BB‐SPIDEV0
+```
+You may have to disable the SPI overlay to follow the steps in the next section;
+otherwise, the terminal may crash and the BBB may need to be rebooted.

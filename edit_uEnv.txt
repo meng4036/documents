@@ -1,0 +1,7 @@
+You can boot into single‐user mode on the BBB by editing uEnv.txt and
+adding the word single at the end of the mmcargs line. This places the BBB in “res-
+cue mode,” which you might do for systems maintenance. Don’t make such a change
+unless you are booting from the SD card or have access to a USB to 3V3 TTL cable, as
+you need to be able to reverse the change. Typing Ctrl+D at the console will return you
+to regular multi‐user mode.
+E
