@@ -1,0 +1,45 @@
+How to config LXR on Ubuntu
+
+### 1. install perl
+  > sudo apt install perl
+
+### 2. install ctags
+  install from respos:
+  > sudo apt install exuberant-ctags
+
+  install from source:
+  > ./configure --prefix=/usr/local/ctags
+  >
+  > make && make install
+  >
+  > vim ~/.bashrc
+  >
+  > export PATH=/usr/local/ctags/bin:$PATH
+
+### 3. install mysql-server
+  > sudo apt install mysql-server
+
+### 4. install lighttpd
+  > sudo apt install lighttpd
+
+### 5. install glimse
+  > sudo apt install flex (install this firstly)
+  >
+  > wget http://webglimpse.net/trial/glimpse-latest.tar.gz
+  >
+  > ./configure
+  >
+  > make & make install
+
+### 6. install perl modules
+  > apt install libdbi-perl
+  >
+  > apt install libfile-mmagic-perl
+  >
+  >apt install libdbd-mysql-perl
+
+### 7. install LXR from release version
+  > cp LXR /home/meng/lxr
+
+### 8. configure lxr
+  > ./scripts/configure-lxr.pl --v
